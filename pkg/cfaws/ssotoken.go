@@ -204,8 +204,14 @@ func GetValidSSOTokenFromPlaintextCache(startUrl string) *securestorage.SSOToken
 		if err != nil {
 			return nil
 		}
-		var ssoPlaintextOutput securestorage.SSOToken
-		ssoPlaintextOutput.AccessToken = creds.AccessToken
+		ssoPlaintextOutput := securestorage.SSOToken{
+			AccessToken:           creds.AccessToken,
+			RefreshToken:          creds.RefreshToken,
+			ClientID:              creds.ClientID,
+			ClientSecret:          creds.ClientSecret,
+			RegistrationExpiresAt: creds.RegistrationExpiresAt,
+			Region:                creds.Region,
+		}
 
 		// from iso string to time.Time
 		ssoPlaintextOutput.Expiry, err = time.Parse(time.RFC3339, creds.ExpiresAt)

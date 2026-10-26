@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExportSSOTokenCache(t *testing.T) {
+func TestSSOTokenCacheRoundTrip(t *testing.T) {
 	for _, refreshable := range []bool{false, true} {
 		name := "legacy"
 		if refreshable {
@@ -22,9 +22,11 @@ func TestExportSSOTokenCache(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("HOME", t.TempDir())
 			cfg := config.SharedConfig{SSOStartURL: "https://example.awsapps.com/start", SSORegion: "ap-southeast-2"}
-			token := securestorage.SSOToken{AccessToken: "access", Expiry: time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)}
+			token := securestorage.SSOToken{
+				AccessToken: "access", Expiry: time.Now().UTC().Truncate(time.Second).Add(time.Hour), Region: cfg.SSORegion,
+			}
 			want := map[string]string{
-				"accessToken": "access", "expiresAt": "2026-10-26T12:00:00Z",
+				"accessToken": "access", "expiresAt": token.Expiry.Format(time.RFC3339),
 				"ssoSessionName": "", "startUrl": cfg.SSOStartURL, "region": cfg.SSORegion,
 			}
 			key := cfg.SSOStartURL
@@ -37,7 +39,7 @@ func TestExportSSOTokenCache(t *testing.T) {
 				token.RegistrationExpiresAt = token.Expiry.Add(24 * time.Hour)
 				want["ssoSessionName"], key = "work", "work"
 				want["refreshToken"], want["clientId"], want["clientSecret"] = refresh, "client", "secret"
-				want["registrationExpiresAt"] = "2026-10-27T12:00:00Z"
+				want["registrationExpiresAt"] = token.RegistrationExpiresAt.Format(time.RFC3339)
 			}
 			require.NoError(t, CreatePlainTextSSO(cfg, &token).DumpToCacheDirectory())
 			filename, err := getCacheFileName(key)
@@ -51,6 +53,13 @@ func TestExportSSOTokenCache(t *testing.T) {
 			info, err := os.Stat(cacheFile)
 			require.NoError(t, err)
 			assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+			imported := GetValidSSOTokenFromPlaintextCache(want["startUrl"])
+			require.NotNil(t, imported)
+			assert.Equal(t, token, *imported)
+			require.NoError(t, CreatePlainTextSSO(cfg, imported).DumpToCacheDirectory())
+			roundTripData, err := os.ReadFile(cacheFile)
+			require.NoError(t, err)
+			assert.JSONEq(t, string(data), string(roundTripData))
 		})
 	}
 }
