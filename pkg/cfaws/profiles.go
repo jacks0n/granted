@@ -65,30 +65,23 @@ func (p *Profile) SSOStartURL() string {
 	return p.AWSConfig.SSOStartURL
 }
 
-// Returns the SSOScopes from the profile. Currently, this looks up the non-standard
-// 'granted_sso_registration_scopes' key on the profile.
-//
-// In future, we'll make this fully compatible with the 'sso_registration_scopes' config used
-// in the native AWS CLI, i.e.
-//
-// [profile AWSAdministratorAccess-123456789012]
-// sso_session = commonfate
-// sso_account_id = 123456789012
-// sso_role_name = AWSAdministratorAccess
-// region = ap-southeast-2
-
-// [sso-session commonfate]
-// sso_start_url = https://example.awsapps.com/start
-// sso_region = ap-southeast-2
-// sso_registration_scopes = sso:account:access
-//
-// However, the AWS v2 Go SDK does not support reading 'sso_registration_scopes', so in order
-// to support this we'll need to parse and lookup the `sso-session` entries in the config file separately.
+// SSOScopes uses the Granted profile override, then the standard SSO session setting.
 func (p *Profile) SSOScopes() []string {
 	if p.RawConfig == nil {
 		return nil
 	}
 	scopeKey, err := p.RawConfig.GetKey("granted_sso_registration_scopes")
+	if err != nil && p.AWSConfig.SSOSessionName != "" {
+		configFile, loadErr := (FileLoader{FilePath: p.File}).Load()
+		if loadErr != nil {
+			return nil
+		}
+		section, sectionErr := configFile.GetSection("sso-session " + p.AWSConfig.SSOSessionName)
+		if sectionErr != nil {
+			return nil
+		}
+		scopeKey, err = section.GetKey("sso_registration_scopes")
+	}
 	if err != nil {
 		return nil
 	}
