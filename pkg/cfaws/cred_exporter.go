@@ -76,7 +76,7 @@ func ExportCredsToProfile(profileName string, creds aws.Credentials, applySuffix
 // ExportAccessTokenToCache will export access tokens to ~/.aws/sso/cache
 func ExportAccessTokenToCache(ctx context.Context, profile *Profile) error {
 	if profile.SSOStartURL() == "" {
-		return fmt.Errorf("profile %q does not use SSO", profile.Name)
+		return nil
 	}
 	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
 	// Find the access token for the SSOStartURL and SSOSessionName

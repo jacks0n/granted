@@ -460,7 +460,7 @@ func AssumeCommand(c *cli.Context) error {
 			clio.Successf("Exported credentials to %s file as %s successfully", credentialsFilePath, profileName)
 		}
 
-		if assumeFlags.Bool("export-sso-token") || cfg.ExportSSOToken {
+		if (assumeFlags.Bool("export-sso-token") || cfg.ExportSSOToken) && profile.SSOStartURL() != "" {
 			err := cfaws.ExportAccessTokenToCache(c.Context, profile)
 
 			if err != nil {

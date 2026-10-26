@@ -70,7 +70,8 @@ role_arn = arn:aws:iam::123456789012:role/ReadOnly
 			assert.Equal(t, tc.profile+"-secret", creds.SecretAccessKey)
 			assert.Equal(t, tc.token, creds.SessionToken)
 			assert.Equal(t, tc.profile == "role", creds.CanExpire)
-			assert.ErrorContains(t, ExportAccessTokenToCache(context.Background(), profile), "does not use SSO")
+			assert.NoError(t, ExportAccessTokenToCache(context.Background(), profile))
+			assert.NoDirExists(t, filepath.Join(fixture, ".aws", "sso", "cache"))
 		})
 	}
 	t.Run("SSO profile without a cached token", func(t *testing.T) {
