@@ -2,6 +2,7 @@ package cfaws
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -74,10 +75,16 @@ func ExportCredsToProfile(profileName string, creds aws.Credentials, applySuffix
 
 // ExportAccessTokenToCache will export access tokens to ~/.aws/sso/cache
 func ExportAccessTokenToCache(ctx context.Context, profile *Profile) error {
+	if profile.SSOStartURL() == "" {
+		return nil
+	}
 	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
 	// Find the access token for the SSOStartURL and SSOSessionName
 	tokenKey := profile.SSOStartURL() + profile.AWSConfig.SSOSessionName
 	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ctx, tokenKey)
+	if cachedToken == nil {
+		return fmt.Errorf("no valid SSO token to export for profile %q", profile.Name)
+	}
 	ssoPlainTextOut := CreatePlainTextSSO(profile.AWSConfig, cachedToken)
 	err := ssoPlainTextOut.DumpToCacheDirectory()
 

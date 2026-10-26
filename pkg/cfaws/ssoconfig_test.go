@@ -21,6 +21,8 @@ func writeSharedConfig(t *testing.T, contents string) {
 	}
 	t.Setenv("AWS_CONFIG_FILE", path)
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(t.TempDir(), "credentials"))
+	t.Setenv("AWS_PROFILE", "")
+	t.Setenv("AWS_DEFAULT_PROFILE", "")
 }
 
 func TestLoadSSOConfig(t *testing.T) {

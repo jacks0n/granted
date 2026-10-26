@@ -16,16 +16,18 @@ import (
 )
 
 type SSOPlainTextOut struct {
-	AccessToken    string `json:"accessToken"`
-	ExpiresAt      string `json:"expiresAt"`
-	SSOSessionName string `json:"ssoSessionName"`
-	StartUrl       string `json:"startUrl"`
-	Region         string `json:"region"`
+	AccessToken           string    `json:"accessToken"`
+	ExpiresAt             string    `json:"expiresAt"`
+	SSOSessionName        string    `json:"ssoSessionName"`
+	StartUrl              string    `json:"startUrl"`
+	Region                string    `json:"region"`
+	RefreshToken          *string   `json:"refreshToken,omitempty"`
+	ClientID              string    `json:"clientId,omitempty"`
+	ClientSecret          string    `json:"clientSecret,omitempty"`
+	RegistrationExpiresAt time.Time `json:"registrationExpiresAt,omitzero"`
 }
 
-// CreatePlainTextSSO is currently unused. In a future version of the Granted CLI,
-// we'll allow users to export a plaintext token from their keychain for compatibility
-// purposes with other AWS tools.
+// CreatePlainTextSSO preserves the token fields AWS tools need for automatic refresh.
 func CreatePlainTextSSO(awsConfig config.SharedConfig, token *securestorage.SSOToken) *SSOPlainTextOut {
 	ssoRegion := awsConfig.SSORegion
 	if ssoRegion == "" && awsConfig.SSOSession != nil {
@@ -38,11 +40,15 @@ func CreatePlainTextSSO(awsConfig config.SharedConfig, token *securestorage.SSOT
 	}
 
 	return &SSOPlainTextOut{
-		AccessToken:    token.AccessToken,
-		ExpiresAt:      token.Expiry.Format(time.RFC3339),
-		Region:         ssoRegion,
-		SSOSessionName: awsConfig.SSOSessionName,
-		StartUrl:       ssoStartURL,
+		AccessToken:           token.AccessToken,
+		ExpiresAt:             token.Expiry.Format(time.RFC3339),
+		Region:                ssoRegion,
+		SSOSessionName:        awsConfig.SSOSessionName,
+		StartUrl:              ssoStartURL,
+		RefreshToken:          token.RefreshToken,
+		ClientID:              token.ClientID,
+		ClientSecret:          token.ClientSecret,
+		RegistrationExpiresAt: token.RegistrationExpiresAt,
 	}
 }
 
@@ -198,8 +204,14 @@ func GetValidSSOTokenFromPlaintextCache(startUrl string) *securestorage.SSOToken
 		if err != nil {
 			return nil
 		}
-		var ssoPlaintextOutput securestorage.SSOToken
-		ssoPlaintextOutput.AccessToken = creds.AccessToken
+		ssoPlaintextOutput := securestorage.SSOToken{
+			AccessToken:           creds.AccessToken,
+			RefreshToken:          creds.RefreshToken,
+			ClientID:              creds.ClientID,
+			ClientSecret:          creds.ClientSecret,
+			RegistrationExpiresAt: creds.RegistrationExpiresAt,
+			Region:                creds.Region,
+		}
 
 		// from iso string to time.Time
 		ssoPlaintextOutput.Expiry, err = time.Parse(time.RFC3339, creds.ExpiresAt)
